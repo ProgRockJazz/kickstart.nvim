@@ -319,8 +319,6 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sg', builtin.live_grep, { desc = '[S]earch by [G]rep' })
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
-      vim.keymap.set('n', '<leader>ds', builtin.lsp_document_symbols, { desc = '[S]earch [D]ocument [S]ymbols (LSP)' })
-      vim.keymap.set('n', '<leader>ws', builtin.lsp_workspace_symbols, { desc = '[S]earch [W]orkspace [S]ymbols (LSP)' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
@@ -721,6 +719,19 @@ require('lazy').setup({
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
         preset = 'default',
+
+        keymap = {
+         ["<Tab>"] = {
+            "snippet_forward",
+            function() -- sidekick next edit suggestion
+              return require("sidekick").nes_jump_or_apply()
+            end,
+            function() -- if you are using Neovim's native inline completions
+              return vim.lsp.inline_completion.get()
+            end,
+            "fallback",
+      	  },
+        },
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
         --    https://github.com/L3MON4D3/LuaSnip?tab=readme-ov-file#keymaps
