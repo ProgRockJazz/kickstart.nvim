@@ -23,6 +23,17 @@ vim.o.showmode = false
 -- clipboard sharing
 vim.schedule(function()
   vim.o.clipboard = 'unnamedplus'
+  vim.g.clipboard = {
+    name = 'OSC 52',
+    copy = {
+      ['+'] = require('vim.clipboard.osc52').copy,
+      ['*'] = require('vim.clipboard.osc52').copy,
+    },
+    paste = {
+      ['+'] = require('vim.clipboard.osc52').paste,
+      ['*'] = require('vim.clipboard.osc52').paste,
+    },
+  }
 end)
 
 -- Enable break indent
@@ -721,16 +732,16 @@ require('lazy').setup({
         preset = 'default',
 
         keymap = {
-         ["<Tab>"] = {
-            "snippet_forward",
+          ['<Tab>'] = {
+            'snippet_forward',
             function() -- sidekick next edit suggestion
-              return require("sidekick").nes_jump_or_apply()
+              return require('sidekick').nes_jump_or_apply()
             end,
             function() -- if you are using Neovim's native inline completions
               return vim.lsp.inline_completion.get()
             end,
-            "fallback",
-      	  },
+            'fallback',
+          },
         },
 
         -- For more advanced Luasnip keymaps (e.g. selecting choice nodes, expansion) see:
