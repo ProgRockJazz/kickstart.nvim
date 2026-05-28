@@ -3,6 +3,7 @@ return {
   opts = {
     -- add any options here
     cli = {
+      watch = true,
       mux = {
         backend = 'tmux',
         enabled = true,
