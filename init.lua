@@ -619,6 +619,7 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
         'prettierd',
+        'tree-sitter-cli', -- Required by nvim-treesitter `main` to compile parsers
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
