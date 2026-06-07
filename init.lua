@@ -624,7 +624,7 @@ require('lazy').setup({
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
-        ensure_installed = { 'vtsls', 'svelte', 'eslint', 'cssls', 'html' },
+        ensure_installed = { 'vtsls', 'svelte', 'eslint', 'cssls', 'html', 'tailwindcss' },
         automatic_installation = false,
         handlers = {
           function(server_name)
@@ -679,6 +679,20 @@ require('lazy').setup({
       vim.lsp.config('cssls', { capabilities = capabilities })
       vim.lsp.config('html', { capabilities = capabilities })
       vim.lsp.config('eslint', { capabilities = capabilities })
+
+      -- Tailwind: class-name completion. The server attaches per-project when it
+      -- finds a Tailwind config; `includeLanguages` teaches it to surface classes
+      -- inside Svelte (and html/css) buffers too.
+      vim.lsp.config('tailwindcss', {
+        capabilities = capabilities,
+        settings = {
+          tailwindCSS = {
+            includeLanguages = {
+              svelte = 'html',
+            },
+          },
+        },
+      })
     end,
   },
 
