@@ -115,6 +115,17 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- Start Treesitter highlighting per-buffer.
+--  nvim-treesitter's `main` branch no longer auto-enables highlighting via `opts`,
+--  so we start it ourselves for any filetype that resolves to an installed parser.
+vim.api.nvim_create_autocmd('FileType', {
+  desc = 'Start Treesitter highlighting when a parser is available',
+  group = vim.api.nvim_create_augroup('treesitter-highlight', { clear = true }),
+  callback = function(args)
+    pcall(vim.treesitter.start, args.buf)
+  end,
+})
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -607,11 +618,12 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'prettierd',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
-        ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
+        ensure_installed = { 'vtsls', 'svelte', 'eslint', 'cssls', 'html' },
         automatic_installation = false,
         handlers = {
           function(server_name)
@@ -624,6 +636,48 @@ require('lazy').setup({
           end,
         },
       }
+
+      -- TypeScript: vtsls with inlay hints
+      vim.lsp.config('vtsls', {
+        capabilities = capabilities,
+        settings = {
+          typescript = {
+            inlayHints = {
+              parameterNames = { enabled = 'all' },
+              variableTypes = { enabled = true },
+              propertyDeclarationTypes = { enabled = true },
+              functionLikeReturnTypes = { enabled = true },
+            },
+          },
+          javascript = {
+            inlayHints = {
+              parameterNames = { enabled = 'all' },
+              variableTypes = { enabled = true },
+              propertyDeclarationTypes = { enabled = true },
+              functionLikeReturnTypes = { enabled = true },
+            },
+          },
+        },
+      })
+
+      -- Svelte: notify server when TS/JS files change so it re-checks imports
+      vim.lsp.config('svelte', {
+        capabilities = capabilities,
+        on_attach = function(client, _bufnr)
+          vim.api.nvim_create_autocmd('BufWritePost', {
+            group = vim.api.nvim_create_augroup('svelte-ts-watcher', { clear = true }),
+            pattern = { '*.js', '*.ts' },
+            callback = function(ctx)
+              client:notify('$/onDidChangeTsOrJsFile', { uri = ctx.match })
+            end,
+          })
+        end,
+      })
+
+      -- Wire blink.cmp capabilities into the remaining web servers
+      vim.lsp.config('cssls', { capabilities = capabilities })
+      vim.lsp.config('html', { capabilities = capabilities })
+      vim.lsp.config('eslint', { capabilities = capabilities })
     end,
   },
 
@@ -659,11 +713,13 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
-        -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
-        --
-        -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettierd' },
+        javascriptreact = { 'prettierd' },
+        typescript = { 'prettierd' },
+        typescriptreact = { 'prettierd' },
+        svelte = { 'prettierd' },
+        css = { 'prettierd' },
+        html = { 'prettierd' },
       },
     },
   },
@@ -845,21 +901,27 @@ require('lazy').setup({
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
-    main = 'nvim-treesitter.config', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
-    opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
-      highlight = {
-        enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
-        additional_vim_regex_highlighting = { 'ruby' },
-      },
-      indent = { enable = true, disable = { 'ruby' } },
-    },
+    config = function()
+      -- NOTE: nvim-treesitter `main` branch. `setup()` only configures the install
+      -- directory; it does NOT consume `ensure_installed`/`highlight`/`indent` like the
+      -- old `master` branch. Highlighting is started by the `treesitter-highlight`
+      -- FileType autocmd near the top of this file.
+      require('nvim-treesitter').setup {}
+
+      -- Parsers to keep installed. `install()` compiles only the missing ones, so this
+      -- is idempotent and non-blocking — cheap on every startup, and self-installs on a
+      -- fresh machine (requires the `tree-sitter` CLI on PATH to compile).
+      --  c/lua/markdown/query/vim/vimdoc/bash ship with Neovim, so they need no install.
+      local ensure_installed = { 'bash', 'c', 'css', 'diff', 'html', 'javascript', 'jsdoc', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'svelte', 'tsx', 'typescript', 'vim', 'vimdoc' }
+      local installed = require('nvim-treesitter.config').get_installed()
+      local to_install = vim.tbl_filter(function(lang)
+        return not vim.list_contains(installed, lang)
+      end, ensure_installed)
+      if #to_install > 0 then
+        require('nvim-treesitter').install(to_install)
+      end
+    end,
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
     --
